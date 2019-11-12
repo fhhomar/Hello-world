@@ -1,0 +1,155 @@
+GlowScript 2.9 VPython
+scene.width=1024
+scene.height=760
+
+
+# CONSTANTS
+G = 6.7e-11
+mEarth = 1.9e27
+mcraft = 722
+mmoon=7e22
+msun=1.99e30
+rsun=695510
+rmoon=1.75e6
+rEarth=6.4e6
+deltat = 60
+t = 0
+pscale=1
+fscale=1e4
+dpscale=100
+tangentscale=1e5
+perpscale=1e5
+
+#OBJECTS AND INITIAL VALUES
+Earth = sphere(pos=vector(0,0,0), radius=7e7, texture=textures.earth)
+scene.range=11*Earth.radius
+# Add a radius for the spacecraft. It should be BIG, so it can be seen.
+craft = sphere(pos=vector(-1.8e9,-25*7e7,0),radius=1e7, color=color.yellow)
+moon= sphere(pos=vector(4e8,0,0),radius=rmoon,color=color.white)
+
+vcraft = vector(0,1e4,0)
+pcraft = mcraft*vcraft
+vmoon=vector(0,1000,0)
+pmoon=mmoon*vmoon
+vEarth=vector(-1.3e4,0,0)
+pEarth=mEarth*vEarth
+excraft=craft.pos-Earth.pos
+#pArrow=arrow(color=color.green)
+#fArrow=arrow(color=color.cyan)
+#dpArrow=arrow(color=color.red)
+Fnet_tangent_arrow=arrow(color=color.yellow)
+Fnet_perp_arrow=arrow(color=color.magenta)
+trail = curve(color=craft.color)        # This creates a trail for the spacecraft
+scene.autoscale = 0     # And this prevents zooming in or out
+
+#Graph
+graph1 = gdisplay(x = 430, y = 0, width = 430, height = 450, title='Speed vs. Time', xtitle='t(s)',
+ytitle='S(m/s)', background = color.black)
+SvT=gcurve(color=color.red)
+
+# CALCULATIONS
+print("p=",pcraft)
+while t < 10*365*24*60*60:
+    rate(1000)  # This slows down the animation (runs faster with bigger number)
+    
+
+    #Add statements here for the iterative update of gravitational
+    #force, momentum, and position. 
+    rE=craft.pos-Earth.pos
+    rEmag=sqrt((rE.x**2)+(rE.y**2)+(rE.z**2))
+    Fearth=(G*mcraft*mEarth)/(rEmag**2)
+    rEhat=rE/rEmag
+    FnetE=-Fearth*rEhat
+    #print("Fnet=",Fnet)
+    
+    #Force of moon on spacecraft
+    rM=craft.pos-moon.pos
+    Fmoon=(G*mcraft*mmoon)/(rM.mag)**2
+    FnetM=-Fmoon*rM.hat
+    
+    #Force of moon on earth
+    rME=Earth.pos-moon.pos
+    FME=(G*mEarth*mmoon)/(rME.mag)**2
+    FnetME=-FME*rME.hat
+    
+    #Force of Earth on moon
+    rEM=moon.pos-Earth.pos
+    FEM=(G*mEarth*mmoon)/(rEM.mag)**2
+    FnetEM=-FEM*rEM.hat
+    
+    #Overall Fnet Calculation for SC
+    Fnetc=FnetE+FnetM
+    
+    #Iterative Calculations for spacecraft
+    p_init=pcraft.mag
+    pcraft_i=pcraft+vector(0,0,0)
+    pcraft=pcraft+(Fnetc*deltat)
+    p_final=pcraft.mag
+    craft.pos=(craft.pos)+(pcraft/mcraft)*deltat
+    Fnet_tangent=((p_final-p_init)/deltat)*pcraft.hat
+    Fnet_perp=Fnetc-Fnet_tangent
+    #print("rcraft=",rcraft)
+    #print("pcraft=",pcraft)
+    
+    #Iterative Calculation for moon
+    pmoon=pmoon+((FnetEM)*deltat)
+    moon.pos=(moon.pos)+(pmoon/mmoon)*deltat
+    
+    #Iterative Calculation for Earth
+    pEarth=pEarth+((FnetME)*deltat)
+    Earth.pos=(Earth.pos)+vEarth*deltat
+    
+    
+    #Print statements
+    #print("pcraft.mag=",pcraft.mag)
+    #print("vcraft.mag=",vcraft.mag)
+    #print("Fnet_perp.mag=",Fnet_perp.mag)
+    #print("rE.mag=",rE.mag)
+    
+    deltap=pcraft-pcraft_i
+    
+    #scene.center=craft.pos
+    #scene.range=craft.radius*60
+    
+    #Momentum Arrow
+    #pArrow.axis=pscale*pcraft
+    #pArrow.pos=craft.pos
+    
+    #Force Arrow
+    # fArrow.pos=craft.pos
+    # fArrow.axis=Fnet*fscale
+    
+    
+    #Dp arrow
+    #dpArrow.pos=craft.pos
+    #dpArrow.axis=deltap*dpscale
+    
+    #Fnet tangent arrow
+    #Fnet_tangent_arrow.pos=craft.pos
+    #Fnet_tangent_arrow.axis=Fnet_tangent*tangentscale
+    
+    #Fnet perpendicular arrow
+    #Fnet_perp_arrow.pos=craft.pos
+    #Fnet_perp_arrow.axis=Fnet_perp*perpscale
+    craft.v=pcraft/mcraft
+    craft.speed = craft.v.mag
+    #graph update
+    SvT.plot(pos=(t,craft.speed)) #Find out graph
+    
+
+
+    # Uncomment these two lines to exit the loop if
+    # the spacecraft crashes onto the Earth.
+    if craft.pos.mag>excraft.mag: 
+        print("Craft Final V:", craft.speed)
+        print("Total Number of days:", t)
+        break
+    
+    if rEmag < Earth.radius: 
+        break
+
+    trail.append(pos=craft.pos)
+    t = t+deltat
+
+#print("Calculations finished after ",t, "seconds")
+#print("Fnet=",Fnet)
